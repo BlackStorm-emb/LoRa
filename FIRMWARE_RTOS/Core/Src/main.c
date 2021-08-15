@@ -140,7 +140,7 @@ int main(void)
   HAL_GPIO_WritePin(PWR_GPIO_Port, PWR_Pin, GPIO_PIN_SET);
   ST7735_Init();
   ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
-
+  //ST7735_InvertColors(1);
   //ST7735_DrawImage(0, 0, ST7735_WIDTH, ST7735_HEIGHT, test_img_160x128_radio);
   /* USER CODE END 2 */
 
@@ -499,11 +499,30 @@ void DisplayTaskFunc(void *argument)
   {
     //ST7735_DrawImage(0, 0, ST7735_WIDTH, ST7735_HEIGHT, test_img_160x128_radio);
     //ST7735_FillScreen(ST7735_WHITE);
+	/*
 	ST7735_FillScreen(ST7735_WHITE);
+	//ST7735_WriteChar(0, 0, 'A', Font_11x18, ST7735_BLACK, ST7735_WHITE);
+	ST7735_WriteString(0, 0, "String1", Font_11x18, ST7735_BLACK, ST7735_WHITE);
+	ST7735_FillRectangle(40, 40, 70, 70, ST7735_BLACK);
     osDelay(1000);
     ST7735_FillScreen(ST7735_YELLOW);
+    ST7735_WriteString(0, 0, "String2", Font_11x18, ST7735_BLACK, ST7735_WHITE);
     osDelay(1000);
     ST7735_FillScreen(ST7735_MAGENTA);
+    ST7735_WriteString(0, 0, "String3", Font_11x18, ST7735_BLACK, ST7735_WHITE);
+	osDelay(1000);
+	*/
+
+	ST7735_FillScreen(ST7735_YELLOW);
+	//ST7735_FillRectangle(40, 10, 80, 30, ST7735_BLACK);
+
+	ST7735_WriteString(40, 10, "String1", Font_7x10, ST7735_BLUE, ST7735_BLACK);
+	/*
+	ST7735_FillRectangle(40, 50, 80, 30, ST7735_BLACK);
+	ST7735_WriteString(40, 50, "String2", Font_7x10, ST7735_WHITE, ST7735_BLACK);
+	ST7735_FillRectangle(40, 90, 80, 30, ST7735_BLACK);
+	ST7735_WriteString(40, 90, "String3", Font_7x10, ST7735_WHITE, ST7735_BLACK);
+	*/
 	osDelay(1000);
   }
   /* USER CODE END DisplayTaskFunc */

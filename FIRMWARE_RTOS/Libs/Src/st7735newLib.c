@@ -2,6 +2,8 @@
 
 #define DELAY 0x80
 
+#define ST7735_COLOR_FIX(color) (color << 8) | ( (color >> 8) & 0xFF);
+
 // based on Adafruit ST7735 library for Arduino
 static const uint8_t
 init_cmds1[] = {            // Init for 7735R, part 1 (red or green tab)
@@ -164,7 +166,9 @@ void ST7735_Init() {
 
 void ST7735_Start(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
 	if (x0 > x1) { window_x0 = x1; window_x1 = x0; } //I know you can do it
+	else { window_x1 = x1; window_x0 = x0; }
 	if (y0 > y1) { window_y0 = y1; window_y1 = y0; }
+	else { window_y1 = y1; window_y0 = y0; }
 	
 	if (window_x1 - window_x0 + 1 > ST7735_WIDTH) window_x1 = ST7735_WIDTH - 1;
 	if (window_y1 - window_y0 + 1 > ST7735_HEIGHT) window_y1 = ST7735_HEIGHT - 1;
@@ -187,19 +191,31 @@ void ST7735_Stop(void) {
 /* Further interaction with the display occurs through framebuffer */
 
 void ST7735_DrawPixel(uint8_t x, uint8_t y, uint16_t color) {
-	framebuffer[ST7735_WIDTH * y + x] = color;
+	framebuffer[(window_x1 - window_x0 + 1) * y + x] = ST7735_COLOR_FIX(color);
 }
 
 static void ST7735_WriteChar(uint8_t x, uint8_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor) {
+	/*
 	uint32_t b;
 
 	for(size_t i = 0; i < font.height; i++) {
 		b = font.data[(ch - 32) * font.height + i];
 		for(size_t j = 0; j < font.width; j++) {
 			if((b << j) & 0x8000)  {
-				framebuffer[i * font.width + j] = (color >> 8) | (color & 0xFF);
+				framebuffer[i * font.height + j] = (color >> 8) | (color & 0xFF);
 			} else {
-				framebuffer[i * font.width + j] = (bgcolor >> 8) | (bgcolor & 0xFF);
+				framebuffer[i * font.height + j] = (bgcolor >> 8) | (bgcolor & 0xFF);
+			}
+		}
+	}
+	*/
+	uint32_t i, b, j;
+
+	for(i = 0; i < font.height; i++) {
+		b = font.data[(ch - 32) * font.height + i];
+		for(j = 0; j < font.width; j++) {
+			if((b << j) & 0x8000)  {
+				ST7735_DrawPixel(x + j, y + i, color);
 			}
 		}
 	}
@@ -228,19 +244,19 @@ while(*str) {
 }
 
 void ST7735_FillRectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t color) {
-    if (x + h > window_x1 - window_x0 + 1) return;
-	if (y + w > window_y1 - window_y0 + 1) return;
+    if (x + w > window_x1 - window_x0 + 1) return;
+	if (y + h > window_y1 - window_y0 + 1) return;
 	
 	for (size_t i = 0; i < h; i++) {
 		for (size_t j = 0; j < w; j++){
-			framebuffer[(i + y) * (window_x1 - window_x0 + 1) + x + j] = color;
+			framebuffer[(i + y) * (window_x1 - window_x0 + 1) + x + j] = ST7735_COLOR_FIX(color);
 		}
 	}
 }
 
 void ST7735_FillScreen(uint16_t color) {
     for (size_t i = 0; i < ST7735_WIDTH * ST7735_HEIGHT; i++)
-		framebuffer[i] = color;
+		framebuffer[i] = ST7735_COLOR_FIX(color);
 }
 
 void ST7735_DrawImage(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint16_t* data) {
@@ -259,5 +275,5 @@ void ST7735_InvertColors(bool invert) {
     ST7735_Select();
     ST7735_WriteCommand(invert ? ST7735_INVON : ST7735_INVOFF);
     ST7735_Unselect();
-	ST7735_Start(window_x0, window_x1, window_y0, window_y1);
+	ST7735_Start(window_x0, window_y0, window_x1, window_y1);
 }
