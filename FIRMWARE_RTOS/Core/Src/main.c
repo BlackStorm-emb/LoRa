@@ -47,6 +47,7 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi1_tx;
 
+TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
 
 /* Definitions for defaultTask */
@@ -91,17 +92,18 @@ static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_TIM6_Init(void);
 void StartDefaultTask(void *argument);
 void RelayTask(void *argument);
 void DisplayTaskFunc(void *argument);
 
 /* USER CODE BEGIN PFP */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+char buf[500];
 /* USER CODE END 0 */
 
 /**
@@ -136,10 +138,14 @@ int main(void)
   MX_SPI1_Init();
   MX_SPI2_Init();
   MX_TIM7_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(PWR_GPIO_Port, PWR_Pin, GPIO_PIN_SET);
   ST7735_Init();
   ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
+  keyboard_INIT();
+  ST7735_FillScreen(ST7735_YELLOW);
+
   //ST7735_InvertColors(1);
   //ST7735_DrawImage(0, 0, ST7735_WIDTH, ST7735_HEIGHT, test_img_160x128_radio);
   /* USER CODE END 2 */
@@ -313,6 +319,44 @@ static void MX_SPI2_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 9999;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 150;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * @brief TIM7 Initialization Function
   * @param None
   * @retval None
@@ -330,9 +374,9 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 0;
+  htim7.Init.Prescaler = 9999;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 65535;
+  htim7.Init.Period = 150;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -399,11 +443,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PWR_B_Pin K_5_Pin */
-  GPIO_InitStruct.Pin = PWR_B_Pin|K_5_Pin;
+  /*Configure GPIO pin : PWR_B_Pin */
+  GPIO_InitStruct.Pin = PWR_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(PWR_B_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PWR_Pin Relay_Pin */
   GPIO_InitStruct.Pin = PWR_Pin|Relay_Pin;
@@ -435,14 +479,22 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : K_1_Pin K_2_Pin K_4_Pin K_3_Pin */
   GPIO_InitStruct.Pin = K_1_Pin|K_2_Pin|K_4_Pin|K_3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : K_5_Pin */
+  GPIO_InitStruct.Pin = K_5_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(K_5_GPIO_Port, &GPIO_InitStruct);
 
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	keyboard_HANDLE();
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -512,18 +564,19 @@ void DisplayTaskFunc(void *argument)
     ST7735_WriteString(0, 0, "String3", Font_11x18, ST7735_BLACK, ST7735_WHITE);
 	osDelay(1000);
 	*/
-
-	ST7735_FillScreen(ST7735_YELLOW);
+	keyboard_BufRead(buf);
+	//
 	//ST7735_FillRectangle(40, 10, 80, 30, ST7735_BLACK);
-
-	ST7735_WriteString(40, 10, "String1", Font_7x10, ST7735_BLUE, ST7735_BLACK);
+	char a = keyboard_ReadLast(1);
+	ST7735_WriteString(40, 10, buf, Font_7x10, ST7735_BLUE, ST7735_BLACK);
+	ST7735_WriteChar(70, 40, a, Font_7x10, ST7735_BLUE, ST7735_BLACK);
 	/*
 	ST7735_FillRectangle(40, 50, 80, 30, ST7735_BLACK);
 	ST7735_WriteString(40, 50, "String2", Font_7x10, ST7735_WHITE, ST7735_BLACK);
 	ST7735_FillRectangle(40, 90, 80, 30, ST7735_BLACK);
 	ST7735_WriteString(40, 90, "String3", Font_7x10, ST7735_WHITE, ST7735_BLACK);
 	*/
-	osDelay(1000);
+	osDelay(200);
   }
   /* USER CODE END DisplayTaskFunc */
 }
@@ -539,7 +592,9 @@ void DisplayTaskFunc(void *argument)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
-
+ if (htim->Instance == TIM7) {
+	keyboard_HANDLE();
+  }
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM2) {
     HAL_IncTick();

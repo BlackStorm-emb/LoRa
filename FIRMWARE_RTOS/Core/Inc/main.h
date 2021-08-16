@@ -32,8 +32,11 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "string.h"
+
 #include "SX1278.h"
 #include "st7735newLib.h"
+#include "keyboard.h"
 
 /* USER CODE END Includes */
 

@@ -110,6 +110,7 @@ void ST7735_Start(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
 void ST7735_Stop(void);
 
 void ST7735_DrawPixel(uint8_t x, uint8_t y, uint16_t color);
+void ST7735_WriteChar(uint8_t x, uint8_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor);
 void ST7735_WriteString(uint8_t x, uint8_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor);
 void ST7735_FillRectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t color);
 void ST7735_FillScreen(uint16_t color);

@@ -194,7 +194,7 @@ void ST7735_DrawPixel(uint8_t x, uint8_t y, uint16_t color) {
 	framebuffer[(window_x1 - window_x0 + 1) * y + x] = ST7735_COLOR_FIX(color);
 }
 
-static void ST7735_WriteChar(uint8_t x, uint8_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor) {
+void ST7735_WriteChar(uint8_t x, uint8_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor) {
 	/*
 	uint32_t b;
 
