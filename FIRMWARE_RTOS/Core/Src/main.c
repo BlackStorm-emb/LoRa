@@ -47,6 +47,7 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi1_tx;
 
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
 
@@ -81,8 +82,20 @@ const osThreadAttr_t DisplayTask_attributes = {
   .stack_size = sizeof(DisplayTaskBuffer),
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for BeeperTask */
+osThreadId_t BeeperTaskHandle;
+uint32_t BeeperTaskBuffer[ 128 ];
+osStaticThreadDef_t BeeperTaskControlBlock;
+const osThreadAttr_t BeeperTask_attributes = {
+  .name = "BeeperTask",
+  .cb_mem = &BeeperTaskControlBlock,
+  .cb_size = sizeof(BeeperTaskControlBlock),
+  .stack_mem = &BeeperTaskBuffer[0],
+  .stack_size = sizeof(BeeperTaskBuffer),
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* USER CODE BEGIN PV */
-
+osMessageQueueId_t BEEPER_MsgQueue;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -93,17 +106,19 @@ static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_TIM2_Init(void);
 void StartDefaultTask(void *argument);
 void RelayTask(void *argument);
 void DisplayTaskFunc(void *argument);
+void BeeperTaskFunc(void *argument);
 
 /* USER CODE BEGIN PFP */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-char buf[500];
+
 /* USER CODE END 0 */
 
 /**
@@ -139,12 +154,9 @@ int main(void)
   MX_SPI2_Init();
   MX_TIM7_Init();
   MX_TIM6_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(PWR_GPIO_Port, PWR_Pin, GPIO_PIN_SET);
-  ST7735_Init();
-  ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
-  keyboard_INIT();
-  ST7735_FillScreen(ST7735_YELLOW);
 
   //ST7735_InvertColors(1);
   //ST7735_DrawImage(0, 0, ST7735_WIDTH, ST7735_HEIGHT, test_img_160x128_radio);
@@ -167,6 +179,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  BEEPER_MsgQueue = osMessageQueueNew(BUZZER_QUEUE_LEN, sizeof(BEPPER_Parameters_t), NULL);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -178,6 +191,9 @@ int main(void)
 
   /* creation of DisplayTask */
   DisplayTaskHandle = osThreadNew(DisplayTaskFunc, NULL, &DisplayTask_attributes);
+
+  /* creation of BeeperTask */
+  BeeperTaskHandle = osThreadNew(BeeperTaskFunc, NULL, &BeeperTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -319,6 +335,64 @@ static void MX_SPI2_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 9;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 19;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief TIM6 Initialization Function
   * @param None
   * @retval None
@@ -374,11 +448,15 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 9999;
+  htim7.Init.Prescaler = 31999;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim7.Init.Period = 150;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OnePulse_Init(&htim7, TIM_OPMODE_SINGLE) != HAL_OK)
   {
     Error_Handler();
   }
@@ -485,15 +563,22 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : K_5_Pin */
   GPIO_InitStruct.Pin = K_5_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(K_5_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	keyboard_HANDLE();
+	keyboard_startHANDLE();
 }
 /* USER CODE END 4 */
 
@@ -509,10 +594,26 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
+  BEPPER_Parameters_t msg;
+
+  ST7735_Init();
+  ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
+  keyboard_INIT();
+  ST7735_FillScreen(ST7735_YELLOW);
+  BEEPER_Enable();
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	msg.freq = 3000;
+	msg.duration = 1500;
+	msg.volume = 0;
+	osMessageQueuePut(BEEPER_MsgQueue, &msg, 0U, 0U);
+    osDelay(2000);
+    msg.freq = 6000;
+	msg.duration = 1000;
+	msg.volume = 0;
+	osMessageQueuePut(BEEPER_MsgQueue, &msg, 0U, 0U);
+	osDelay(1500);
   }
   /* USER CODE END 5 */
 }
@@ -564,11 +665,11 @@ void DisplayTaskFunc(void *argument)
     ST7735_WriteString(0, 0, "String3", Font_11x18, ST7735_BLACK, ST7735_WHITE);
 	osDelay(1000);
 	*/
-	keyboard_BufRead(buf);
+	//keyboard_BufRead(buf);
 	//
 	//ST7735_FillRectangle(40, 10, 80, 30, ST7735_BLACK);
 	char a = keyboard_ReadLast(1);
-	ST7735_WriteString(40, 10, buf, Font_7x10, ST7735_BLUE, ST7735_BLACK);
+	//ST7735_WriteString(40, 10, buf, Font_7x10, ST7735_BLUE, ST7735_BLACK);
 	ST7735_WriteChar(70, 40, a, Font_7x10, ST7735_BLUE, ST7735_BLACK);
 	/*
 	ST7735_FillRectangle(40, 50, 80, 30, ST7735_BLACK);
@@ -581,9 +682,35 @@ void DisplayTaskFunc(void *argument)
   /* USER CODE END DisplayTaskFunc */
 }
 
+/* USER CODE BEGIN Header_BeeperTaskFunc */
+/**
+* @brief Function implementing the BeeperTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_BeeperTaskFunc */
+void BeeperTaskFunc(void *argument)
+{
+  /* USER CODE BEGIN BeeperTaskFunc */
+	BEPPER_Parameters_t msg;
+	osStatus_t status;
+  /* Infinite loop */
+  for(;;)
+  {
+    status = osMessageQueueGet(BEEPER_MsgQueue, &msg, NULL, portMAX_DELAY);
+    if (status == osOK) {
+    	BEEPER_SetFreq(msg.freq);
+    	BEEPER_SetVolume(msg.volume);
+		osDelay(msg.duration);
+		BEEPER_SetVolume(BUZZER_VOLUME_MUTE);
+    }
+  }
+  /* USER CODE END BeeperTaskFunc */
+}
+
  /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM2 interrupt took place, inside
+  * @note   This function is called  when TIM4 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -592,11 +719,9 @@ void DisplayTaskFunc(void *argument)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
- if (htim->Instance == TIM7) {
-	keyboard_HANDLE();
-  }
+
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM2) {
+  if (htim->Instance == TIM4) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */

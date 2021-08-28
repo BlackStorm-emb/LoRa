@@ -10,10 +10,13 @@
 
 #include "main.h"
 
+#define SHORT_CLICK_DELAY 70
+#define LONG_CLICK_DELAY 40
 
 #define KEYBOARD_BUFFER_SYMB_LENGTH 500
 #define KEYBOARD_BUFFER_CTRL_LENGTH 10
 
+void keyboard_startHANDLE(void);
 void keyboard_HANDLE(void); //process clicks
 
 void keyboard_INIT(void);

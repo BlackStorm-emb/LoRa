@@ -12,6 +12,7 @@ static struct KEYBOARD_struct {
 	uint16_t end_ptr_symb;
 	uint16_t end_ptr_ctrl;
 	_Bool isShifted;
+	_Bool isPressing;
 
 } keyboard;
 
@@ -27,13 +28,25 @@ void keyboard_INIT(void) {
 	keyboard.end_ptr_symb = 0;
 	keyboard.end_ptr_ctrl = 0;
 	keyboard.isShifted = 0;
-	HAL_TIM_Base_Start_IT(&htim7);
+	keyboard.isPressing = 0;
+	//HAL_TIM_Base_Start_IT(&htim7);
+}
+
+void keyboard_startHANDLE(void) {
+	if (!keyboard.isPressing) {
+		TIM7->ARR = SHORT_CLICK_DELAY - 1;
+		keyboard.isPressing = 1;
+		HAL_TIM_Base_Start_IT(&htim7);
+	}
 }
 
 void keyboard_HANDLE(void) {
 	if (keyboard.end_ptr_symb == KEYBOARD_BUFFER_SYMB_LENGTH - 2 || keyboard.end_ptr_ctrl > KEYBOARD_BUFFER_CTRL_LENGTH - 2)
 		//overflow
 		return;
+
+	uint16_t this_end_ptr_symb = keyboard.end_ptr_symb;
+	uint16_t this_end_ptr_ctrl = keyboard.end_ptr_ctrl;
 	//A
 	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_SET);
@@ -76,7 +89,7 @@ void keyboard_HANDLE(void) {
 			keyboard.keyboard_buffer_symb[keyboard.end_ptr_symb] = 't';
 		keyboard.end_ptr_symb++;
 	}
-
+	return;
 	//B
 	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_RESET);
@@ -286,6 +299,10 @@ void keyboard_HANDLE(void) {
 	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_SET);
+
+
+
+		keyboard.isPressing = 0;
 }
 
 char keyboard_ReadLast(_Bool isSymb) {

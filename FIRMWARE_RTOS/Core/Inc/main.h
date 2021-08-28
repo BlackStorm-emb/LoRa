@@ -37,6 +37,7 @@ extern "C" {
 #include "SX1278.h"
 #include "st7735newLib.h"
 #include "keyboard.h"
+#include "beeper.h"
 
 /* USER CODE END Includes */
 
@@ -54,6 +55,8 @@ extern "C" {
 /* USER CODE BEGIN EM */
 
 /* USER CODE END EM */
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
@@ -73,6 +76,8 @@ void Error_Handler(void);
 #define C_GPIO_Port GPIOC
 #define A_Pin GPIO_PIN_3
 #define A_GPIO_Port GPIOC
+#define Buzzer_Pin GPIO_PIN_0
+#define Buzzer_GPIO_Port GPIOA
 #define PWR_B_Pin GPIO_PIN_1
 #define PWR_B_GPIO_Port GPIOA
 #define PWR_Pin GPIO_PIN_2
@@ -103,16 +108,21 @@ void Error_Handler(void);
 #define LORA_DIO0_GPIO_Port GPIOC
 #define K_1_Pin GPIO_PIN_8
 #define K_1_GPIO_Port GPIOC
+#define K_1_EXTI_IRQn EXTI9_5_IRQn
 #define K_2_Pin GPIO_PIN_9
 #define K_2_GPIO_Port GPIOC
+#define K_2_EXTI_IRQn EXTI9_5_IRQn
 #define Relay_Pin GPIO_PIN_8
 #define Relay_GPIO_Port GPIOA
 #define K_5_Pin GPIO_PIN_15
 #define K_5_GPIO_Port GPIOA
+#define K_5_EXTI_IRQn EXTI15_10_IRQn
 #define K_4_Pin GPIO_PIN_10
 #define K_4_GPIO_Port GPIOC
+#define K_4_EXTI_IRQn EXTI15_10_IRQn
 #define K_3_Pin GPIO_PIN_11
 #define K_3_GPIO_Port GPIOC
+#define K_3_EXTI_IRQn EXTI15_10_IRQn
 #define B_Pin GPIO_PIN_12
 #define B_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
