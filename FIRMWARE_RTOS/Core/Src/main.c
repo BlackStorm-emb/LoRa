@@ -48,8 +48,6 @@ SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim6;
-TIM_HandleTypeDef htim7;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -72,7 +70,7 @@ const osThreadAttr_t Relay_attributes = {
 };
 /* Definitions for DisplayTask */
 osThreadId_t DisplayTaskHandle;
-uint32_t DisplayTaskBuffer[ 128 ];
+uint32_t DisplayTaskBuffer[ 400 ];
 osStaticThreadDef_t DisplayTaskControlBlock;
 const osThreadAttr_t DisplayTask_attributes = {
   .name = "DisplayTask",
@@ -94,8 +92,27 @@ const osThreadAttr_t BeeperTask_attributes = {
   .stack_size = sizeof(BeeperTaskBuffer),
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for KeyboardTask */
+osThreadId_t KeyboardTaskHandle;
+uint32_t KeyboardTaskBuffer[ 128 ];
+osStaticThreadDef_t KeyboardTaskControlBlock;
+const osThreadAttr_t KeyboardTask_attributes = {
+  .name = "KeyboardTask",
+  .cb_mem = &KeyboardTaskControlBlock,
+  .cb_size = sizeof(KeyboardTaskControlBlock),
+  .stack_mem = &KeyboardTaskBuffer[0],
+  .stack_size = sizeof(KeyboardTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for KeyboardBinSem */
+osSemaphoreId_t KeyboardBinSemHandle;
+const osSemaphoreAttr_t KeyboardBinSem_attributes = {
+  .name = "KeyboardBinSem"
+};
 /* USER CODE BEGIN PV */
 osMessageQueueId_t BEEPER_MsgQueue;
+osMessageQueueId_t TEXT_MsgQueue;
+#define TEXT_QUEUE_LENGTH 50
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,13 +121,12 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_TIM7_Init(void);
-static void MX_TIM6_Init(void);
 static void MX_TIM2_Init(void);
 void StartDefaultTask(void *argument);
 void RelayTask(void *argument);
 void DisplayTaskFunc(void *argument);
 void BeeperTaskFunc(void *argument);
+void KeyboardTaskFunc(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -152,11 +168,12 @@ int main(void)
   MX_DMA_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
-  MX_TIM7_Init();
-  MX_TIM6_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(PWR_GPIO_Port, PWR_Pin, GPIO_PIN_SET);
+  ST7735_Init();
+  ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
+  ST7735_FillScreen(ST7735_YELLOW);
 
   //ST7735_InvertColors(1);
   //ST7735_DrawImage(0, 0, ST7735_WIDTH, ST7735_HEIGHT, test_img_160x128_radio);
@@ -169,6 +186,10 @@ int main(void)
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* creation of KeyboardBinSem */
+  KeyboardBinSemHandle = osSemaphoreNew(1, 1, &KeyboardBinSem_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -180,6 +201,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   BEEPER_MsgQueue = osMessageQueueNew(BUZZER_QUEUE_LEN, sizeof(BEPPER_Parameters_t), NULL);
+  TEXT_MsgQueue = osMessageQueueNew(TEXT_QUEUE_LENGTH, sizeof(char), NULL);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -194,6 +216,9 @@ int main(void)
 
   /* creation of BeeperTask */
   BeeperTaskHandle = osThreadNew(BeeperTaskFunc, NULL, &BeeperTask_attributes);
+
+  /* creation of KeyboardTask */
+  KeyboardTaskHandle = osThreadNew(KeyboardTaskFunc, NULL, &KeyboardTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -393,86 +418,6 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM6_Init(void)
-{
-
-  /* USER CODE BEGIN TIM6_Init 0 */
-
-  /* USER CODE END TIM6_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM6_Init 1 */
-
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 9999;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 150;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM6_Init 2 */
-
-  /* USER CODE END TIM6_Init 2 */
-
-}
-
-/**
-  * @brief TIM7 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM7_Init(void)
-{
-
-  /* USER CODE BEGIN TIM7_Init 0 */
-
-  /* USER CODE END TIM7_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM7_Init 1 */
-
-  /* USER CODE END TIM7_Init 1 */
-  htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 31999;
-  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 150;
-  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_OnePulse_Init(&htim7, TIM_OPMODE_SINGLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM7_Init 2 */
-
-  /* USER CODE END TIM7_Init 2 */
-
-}
-
-/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -510,7 +455,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIO1_GPIO_Port, GPIO1_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, TFT_CS_Pin|LORA_NSS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(TFT_CS_GPIO_Port, TFT_CS_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LORA_NSS_GPIO_Port, LORA_NSS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : F_Pin D_Pin E_Pin C_Pin
                            A_Pin B_Pin */
@@ -541,19 +489,33 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIO1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : TFT_RES_Pin TFT_DS_Pin LORA_RST_Pin LORA_DIO0_Pin */
-  GPIO_InitStruct.Pin = TFT_RES_Pin|TFT_DS_Pin|LORA_RST_Pin|LORA_DIO0_Pin;
+  /*Configure GPIO pins : TFT_RES_Pin TFT_DS_Pin */
+  GPIO_InitStruct.Pin = TFT_RES_Pin|TFT_DS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TFT_CS_Pin */
+  GPIO_InitStruct.Pin = TFT_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(TFT_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LORA_NSS_Pin */
+  GPIO_InitStruct.Pin = LORA_NSS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LORA_NSS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LORA_RST_Pin LORA_DIO0_Pin */
+  GPIO_InitStruct.Pin = LORA_RST_Pin|LORA_DIO0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : TFT_CS_Pin LORA_NSS_Pin */
-  GPIO_InitStruct.Pin = TFT_CS_Pin|LORA_NSS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : K_1_Pin K_2_Pin K_4_Pin K_3_Pin */
   GPIO_InitStruct.Pin = K_1_Pin|K_2_Pin|K_4_Pin|K_3_Pin;
@@ -568,17 +530,15 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(K_5_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	keyboard_startHANDLE();
+	osSemaphoreRelease(KeyboardBinSemHandle);
+    HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+    HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+    //__HAL_GPIO_EXTI_CLEAR_IT(GPIO_Pin);
 }
 /* USER CODE END 4 */
 
@@ -596,24 +556,21 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
   BEPPER_Parameters_t msg;
 
-  ST7735_Init();
-  ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
-  keyboard_INIT();
+  //keyboard_INIT();
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
   ST7735_FillScreen(ST7735_YELLOW);
+
+
   BEEPER_Enable();
   /* Infinite loop */
   for(;;)
   {
-	msg.freq = 3000;
-	msg.duration = 1500;
-	msg.volume = 0;
-	osMessageQueuePut(BEEPER_MsgQueue, &msg, 0U, 0U);
-    osDelay(2000);
-    msg.freq = 6000;
-	msg.duration = 1000;
-	msg.volume = 0;
-	osMessageQueuePut(BEEPER_MsgQueue, &msg, 0U, 0U);
-	osDelay(1500);
+
+	osDelay(100);
   }
   /* USER CODE END 5 */
 }
@@ -647,37 +604,31 @@ void RelayTask(void *argument)
 void DisplayTaskFunc(void *argument)
 {
   /* USER CODE BEGIN DisplayTaskFunc */
+	char buf[100];
+	char msg;
+	static uint32_t buf_end = 0;
+	osStatus_t status;
   /* Infinite loop */
   for(;;)
   {
-    //ST7735_DrawImage(0, 0, ST7735_WIDTH, ST7735_HEIGHT, test_img_160x128_radio);
-    //ST7735_FillScreen(ST7735_WHITE);
-	/*
-	ST7735_FillScreen(ST7735_WHITE);
-	//ST7735_WriteChar(0, 0, 'A', Font_11x18, ST7735_BLACK, ST7735_WHITE);
-	ST7735_WriteString(0, 0, "String1", Font_11x18, ST7735_BLACK, ST7735_WHITE);
-	ST7735_FillRectangle(40, 40, 70, 70, ST7735_BLACK);
-    osDelay(1000);
-    ST7735_FillScreen(ST7735_YELLOW);
-    ST7735_WriteString(0, 0, "String2", Font_11x18, ST7735_BLACK, ST7735_WHITE);
-    osDelay(1000);
-    ST7735_FillScreen(ST7735_MAGENTA);
-    ST7735_WriteString(0, 0, "String3", Font_11x18, ST7735_BLACK, ST7735_WHITE);
-	osDelay(1000);
-	*/
-	//keyboard_BufRead(buf);
-	//
-	//ST7735_FillRectangle(40, 10, 80, 30, ST7735_BLACK);
-	char a = keyboard_ReadLast(1);
-	//ST7735_WriteString(40, 10, buf, Font_7x10, ST7735_BLUE, ST7735_BLACK);
-	ST7735_WriteChar(70, 40, a, Font_7x10, ST7735_BLUE, ST7735_BLACK);
-	/*
-	ST7735_FillRectangle(40, 50, 80, 30, ST7735_BLACK);
-	ST7735_WriteString(40, 50, "String2", Font_7x10, ST7735_WHITE, ST7735_BLACK);
-	ST7735_FillRectangle(40, 90, 80, 30, ST7735_BLACK);
-	ST7735_WriteString(40, 90, "String3", Font_7x10, ST7735_WHITE, ST7735_BLACK);
-	*/
-	osDelay(200);
+	status = osMessageQueueGet(TEXT_MsgQueue, &msg, NULL, portMAX_DELAY);
+	  if (status == osOK) {
+		if (buf_end == 20) {
+			buf_end = 0;
+			for (size_t i = 0; i < 100; i++) buf[i] = 0;
+		}
+		if (msg == 0xFF) {
+			buf[buf_end - 1] = 0;
+			if (buf_end)
+				buf_end--;
+		}
+		else {
+			buf[buf_end] = msg;
+			buf_end++;
+		}
+		ST7735_FillScreen(ST7735_YELLOW);
+		ST7735_WriteString(0, 0, buf, Font_11x18, ST7735_BLACK, ST7735_WHITE);
+	  }
   }
   /* USER CODE END DisplayTaskFunc */
 }
@@ -708,9 +659,271 @@ void BeeperTaskFunc(void *argument)
   /* USER CODE END BeeperTaskFunc */
 }
 
+/* USER CODE BEGIN Header_KeyboardTaskFunc */
+/**
+* @brief Function implementing the KeyboardTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_KeyboardTaskFunc */
+void KeyboardTaskFunc(void *argument)
+{
+  /* USER CODE BEGIN KeyboardTaskFunc */
+  BEPPER_Parameters_t msg;
+  char msg_text;
+  static _Bool isShifted = 1;
+
+  /* Infinite loop */
+  for(;;)
+  {
+    osSemaphoreAcquire(KeyboardBinSemHandle, portMAX_DELAY);
+    osDelay(30);
+    msg_text = 0;
+    //A
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_SET);
+	if (!HAL_GPIO_ReadPin(K_1_GPIO_Port, K_1_Pin)) {
+		if (isShifted)
+			msg_text = 'Q';
+		else
+			msg_text = '1';
+	}
+	if (!HAL_GPIO_ReadPin(K_2_GPIO_Port, K_2_Pin)){
+		if (isShifted)
+			msg_text = 'W';
+		else
+			msg_text = '2';
+
+	}
+	if (!HAL_GPIO_ReadPin(K_3_GPIO_Port, K_3_Pin)){
+		if (isShifted)
+			msg_text = 'E';
+		else
+			msg_text = '3';
+
+	}
+	if (!HAL_GPIO_ReadPin(K_4_GPIO_Port, K_4_Pin)){
+		if (isShifted)
+			msg_text = 'R';
+		else
+			msg_text = '4';
+
+	}
+	if (!HAL_GPIO_ReadPin(K_5_GPIO_Port, K_5_Pin)){
+		if (isShifted)
+			msg_text = 'T';
+		else
+			msg_text = '5';
+
+	}
+
+	//B
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_SET);
+	if (!HAL_GPIO_ReadPin(K_1_GPIO_Port, K_1_Pin)) {
+		if (isShifted)
+			msg_text = 'Y';
+		else
+			msg_text = '6';
+	}
+	if (!HAL_GPIO_ReadPin(K_2_GPIO_Port, K_2_Pin)){
+		if (isShifted)
+			msg_text = 'U';
+		else
+			msg_text = '7';
+	}
+	if (!HAL_GPIO_ReadPin(K_3_GPIO_Port, K_3_Pin)){
+		if (isShifted)
+			msg_text = 'I';
+		else
+			msg_text = '8';
+	}
+	if (!HAL_GPIO_ReadPin(K_4_GPIO_Port, K_4_Pin)){
+		if (isShifted)
+			msg_text = 'O';
+		else
+			msg_text = '9';
+	}
+	if (!HAL_GPIO_ReadPin(K_5_GPIO_Port, K_5_Pin)){
+		if (isShifted)
+			msg_text = 'P';
+		else
+			msg_text = '0';
+	}
+
+	//C
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_SET);
+	if (!HAL_GPIO_ReadPin(K_1_GPIO_Port, K_1_Pin)) {
+		if (isShifted)
+			msg_text = 'A';
+		else
+			msg_text = '!';
+	}
+	if (!HAL_GPIO_ReadPin(K_2_GPIO_Port, K_2_Pin)){
+		if (isShifted)
+			msg_text = 'S';
+		else
+			msg_text = '"';
+	}
+	if (!HAL_GPIO_ReadPin(K_3_GPIO_Port, K_3_Pin)){
+		if (isShifted)
+			msg_text = 'D';
+		else
+			msg_text = 'n';
+	}
+	else if (!HAL_GPIO_ReadPin(K_4_GPIO_Port, K_4_Pin)){
+		if (isShifted)
+			msg_text = 'F';
+		else
+			msg_text = ';';
+	}
+	else if (!HAL_GPIO_ReadPin(K_5_GPIO_Port, K_5_Pin)){
+		if (isShifted)
+			msg_text = 'G';
+		else
+			msg_text = '%';
+	}
+
+	//D
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_SET);
+	if (!HAL_GPIO_ReadPin(K_1_GPIO_Port, K_1_Pin)) {
+		if (isShifted)
+			msg_text = 'H';
+		else
+			msg_text = ':';
+
+	}
+	else if (!HAL_GPIO_ReadPin(K_2_GPIO_Port, K_2_Pin)){
+		if (isShifted)
+			msg_text = 'J';
+		else
+			msg_text = '?';
+
+	}
+	else if (!HAL_GPIO_ReadPin(K_3_GPIO_Port, K_3_Pin)){
+		if (isShifted)
+			msg_text = 'K';
+		else
+			msg_text = '*';
+
+	}
+	else if (!HAL_GPIO_ReadPin(K_4_GPIO_Port, K_4_Pin)){
+		if (isShifted)
+			msg_text = 'L';
+		else
+			msg_text = '(';
+
+	}
+	else if (!HAL_GPIO_ReadPin(K_5_GPIO_Port, K_5_Pin)){
+		if (isShifted)
+			msg_text = 'Z';
+		else
+			msg_text = ')';
+
+	}
+
+	//E
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_SET);
+	if (!HAL_GPIO_ReadPin(K_1_GPIO_Port, K_1_Pin)) {
+		if (isShifted)
+			msg_text = 'X';
+		else
+			msg_text = '-';
+	}
+	else if (!HAL_GPIO_ReadPin(K_2_GPIO_Port, K_2_Pin)){
+		if (isShifted)
+			msg_text = 'C';
+		else
+			msg_text = '+';
+	}
+	else if (!HAL_GPIO_ReadPin(K_3_GPIO_Port, K_3_Pin)){
+		if (isShifted)
+			msg_text = 'V';
+		else
+			msg_text = '=';
+	}
+	else if (!HAL_GPIO_ReadPin(K_4_GPIO_Port, K_4_Pin)){
+		if (isShifted)
+			msg_text = 'B';
+		else
+			msg_text = '/';
+}
+	else if (!HAL_GPIO_ReadPin(K_5_GPIO_Port, K_5_Pin)){
+		if (isShifted)
+			msg_text = 'N';
+		else
+			msg_text = ',';
+	}
+
+	//F
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_RESET);
+	if (!HAL_GPIO_ReadPin(K_1_GPIO_Port, K_1_Pin)) {
+		if (isShifted)
+			msg_text = 'M';
+		else
+			msg_text = '.';
+	}
+	else if (!HAL_GPIO_ReadPin(K_2_GPIO_Port, K_2_Pin)){
+		msg_text = ' ';
+	}
+	else if (!HAL_GPIO_ReadPin(K_3_GPIO_Port, K_3_Pin)){
+
+	}
+	else if (!HAL_GPIO_ReadPin(K_4_GPIO_Port, K_4_Pin)){
+		isShifted = !isShifted;
+	}
+	else if (!HAL_GPIO_ReadPin(K_5_GPIO_Port, K_5_Pin)){
+		msg_text = 0xFF;
+	}
+
+	HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(C_GPIO_Port, C_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(D_GPIO_Port, D_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(E_GPIO_Port, E_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(F_GPIO_Port, F_Pin, GPIO_PIN_RESET);
+
+	if (msg_text)
+		osMessageQueuePut(TEXT_MsgQueue, &msg_text, 0U, 0U);
+
+	osDelay(60);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  }
+  /* USER CODE END KeyboardTaskFunc */
+}
+
  /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM4 interrupt took place, inside
+  * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -721,7 +934,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM4) {
+  if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */

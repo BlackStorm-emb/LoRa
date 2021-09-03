@@ -170,8 +170,8 @@ void ST7735_Start(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
 	if (y0 > y1) { window_y0 = y1; window_y1 = y0; }
 	else { window_y1 = y1; window_y0 = y0; }
 	
-	if (window_x1 - window_x0 + 1 > ST7735_WIDTH) window_x1 = ST7735_WIDTH - 1;
-	if (window_y1 - window_y0 + 1 > ST7735_HEIGHT) window_y1 = ST7735_HEIGHT - 1;
+	if (window_x1 - window_x0 + 1 > ST7735_WIDTH) window_x1 = ST7735_WIDTH - 1 - window_x0;
+	if (window_y1 - window_y0 + 1 > ST7735_HEIGHT) window_y1 = ST7735_HEIGHT - 1 - window_y0;
 	//Start DMA
 	
 	ST7735_Select();
