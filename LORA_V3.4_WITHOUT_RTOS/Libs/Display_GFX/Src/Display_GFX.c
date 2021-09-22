@@ -328,14 +328,16 @@ void ST7735_fillRoundRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16
 }
 
 _Bool ST7735_setTextArea(text_area_t *area, uint16_t x, uint16_t y, uint16_t w, uint16_t h, FontDef *font) {
-		if (x + w >= window_x1 - window_x0 + 1) return 0;
-		if (y + h >= window_y1 - window_y0 + 1) return 0;
+	if (x + w >= window_x1 - window_x0 + 1) return 0;
+	if (y + h >= window_y1 - window_y0 + 1) return 0;
 
-		area->x = x;
-		area->y = y;
-		area->w = w;
-		area->h = h;
-		area->font = font;
+	area->x = x;
+	area->y = y;
+	area->w = w;
+	area->h = h;
+	area->font = font;
+	area->font_height = font->height;
+	area->font_width = font->width;
 	return 1;
 }
 
@@ -343,10 +345,10 @@ _Bool ST7735_writeToTextArea(text_area_t *area, char *text, uint16_t color, uint
 	uint16_t x = area->x;
 	uint16_t y = area->y;
 	while(*text) {
-		if(x + area->font->width >= area->x + area->w) {
+		if(x + area->font_width >= area->x + area->w) {
 			x = area->x;
-			y += area->font->height;
-			if(y + area->font->height >= area->y + area->h) {
+			y += area->font_height;
+			if(y + area->font_height >= area->y + area->h) {
 				return 0;
 			}
 
@@ -358,7 +360,7 @@ _Bool ST7735_writeToTextArea(text_area_t *area, char *text, uint16_t color, uint
 		}
 
 		ST7735_WriteChar(x, y, *text, *(area->font), color, bgcolor);
-		x += area->font->width;
+		x += area->font_width;
 		text++;
 	}
 	return 1;

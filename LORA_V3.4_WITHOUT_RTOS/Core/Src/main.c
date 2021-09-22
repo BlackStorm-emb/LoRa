@@ -132,7 +132,7 @@ int main(void)
   SX1278.hw = &SX1278_hw;
 
   //SX1278_init(&SX1278, 434000000, SX1278_POWER_17DBM, SX1278_LORA_SF_7, SX1278_LORA_BW_125KHZ, SX1278_LORA_CR_4_5, SX1278_LORA_CRC_EN, 10);
-  SX1278_begin(&SX1278, SX1278_433MHZ, SX1278_POWER_14DBM, SX1278_LORA_SF_8, SX1278_LORA_BW_31_2KHZ, 20);
+  SX1278_begin(&SX1278, SX1278_433MHZ, SX1278_POWER_14DBM, SX1278_LORA_SF_8, SX1278_LORA_BW_20_8KHZ, 20);
   SX1278_LoRaEntryRx(&SX1278, 50, 2000);
   //BEEPER_PlayTones(tones_SMB);
 
@@ -143,9 +143,9 @@ int main(void)
   text_area_t text_area1;
   text_area_t text_area2;
   text_area_t text_area3;
-  ST7735_setTextArea(&text_area1, 1, ST7735_HEIGHT / 2 + 3, 177, 50, &Font_7x10);
+  ST7735_setTextArea(&text_area1, 1, ST7735_HEIGHT / 2 + 3, 120, 50, &Font_7x10);
   ST7735_setTextArea(&text_area2, 4,  4, 100, 50, &Font_7x10);
-  ST7735_setTextArea(&text_area3, 80, 4, 60, 40, &Font_7x10);
+  ST7735_setTextArea(&text_area3, 80, 20, 60, 40, &Font_7x10);
 
 
 
@@ -156,7 +156,8 @@ int main(void)
 	static char buf_r[60];
 	static char i = 0;
 	static _Bool shifted = 0;
-	sprintf(buf, "Hell");
+
+
 
 	uint16_t ret = SX1278_LoRaRxPacket(&SX1278);
 
@@ -185,7 +186,7 @@ int main(void)
 					BEEPER_Enable(700, 10);
 				SX1278_LoRaEntryTx(&SX1278, strlen(buf), 2000);
 				SX1278_LoRaTxPacket(&SX1278, (uint8_t *)buf, strlen(buf), 2000);
-				SX1278_LoRaEntryRx(&SX1278, 50, 2000);
+				SX1278_LoRaEntryRx(&SX1278, 10, 2000);
 				for (int i = 0; i < 60; i++) buf[i] = 0;
 				i = 0;
 				main_menu(0);
@@ -222,6 +223,7 @@ int main(void)
 	}
 	ST7735_writeToTextArea(&text_area1, buf, ST7735_RED, ST7735_BLACK);
 	HAL_Delay(100);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
