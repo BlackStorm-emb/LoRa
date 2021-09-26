@@ -43,9 +43,13 @@ void set_current_menu(MENU_STATE_t initial_state) {
 
 //menu functions
 
-void *main_menu(char* text1, char* text2) {
+void *main_menu(char* text1, char* text2, _Bool shifted) {
 	static text_area_t text_area1;
+	static text_area_t text_area2;
+	static text_area_t text_area3;
 	ST7735_setTextArea(&text_area1, 1, ST7735_HEIGHT / 2 + 3, 120, 50, &Font_7x10);
+	ST7735_setTextArea(&text_area2, 4,  4, 100, 50, &Font_7x10);
+	ST7735_setTextArea(&text_area3, 80, 20, 60, 40, &Font_7x10);
 
 
 	ST7735_FillRectangle(0, 0, ST7735_WIDTH, ST7735_HEIGHT, ST7735_COLOR565(0x2b, 0x2d, 0x30));
@@ -53,6 +57,8 @@ void *main_menu(char* text1, char* text2) {
 	ST7735_drawLine(0, ST7735_HEIGHT / 2, ST7735_WIDTH, ST7735_HEIGHT / 2, ST7735_WHITE);
 	ST7735_WriteString(4, 5, "Messages: ", Font_7x10, ST7735_RED, ST7735_BLACK);
 	ST7735_writeToTextArea(&text_area1, text1, ST7735_RED, ST7735_BLACK);
+	ST7735_writeToTextArea(&text_area2, text2, ST7735_RED, ST7735_BLACK);
+	if (shifted) ST7735_writeToTextArea(&text_area3, "Shifted", ST7735_RED, ST7735_BLACK);
 	menu.updated = 1;
 	return 0;
 }

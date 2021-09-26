@@ -36,7 +36,7 @@ void set_current_menu(MENU_STATE_t state);
 
 //menu functions
 
-void *main_menu(char* text1, char* text2);
+void *main_menu(char* text1, char* text2, _Bool shifted);
 void *write_message_menu(char* text1);
 
 #endif /* INC_MENUS_H_ */

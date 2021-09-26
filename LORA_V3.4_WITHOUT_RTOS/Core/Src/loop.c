@@ -14,17 +14,21 @@
 #include "menus.h"
 
 static Keypad_t keypad;
+static _Bool keypad_shifted;
 
 extern SPI_HandleTypeDef hspi2;
 static SX1278_hw_t SX1278_hw;
 static SX1278_t SX1278;
 
+#define BUFFER_LENGTH 100
+
 typedef struct{
 	uint8_t i;
-	char buf[200];
+	char buf[BUFFER_LENGTH];
 } text_buf_t;
 
 static text_buf_t text_buf;
+static text_buf_t text_buf_rx;
 
 //State Machine, здесь мы описываем возможные состояния
 typedef enum {
@@ -118,18 +122,54 @@ void idle(void) {
 void show_main_menu(void) {
 	set_current_menu(MENU_STATE_MAIN_MENU);
 
+	uint16_t ret = SX1278_LoRaRxPacket(&SX1278);
+
+	if (ret > 0) {
+			BEEPER_Enable(1000, 20);
+			SX1278_read(&SX1278, (uint8_t*) text_buf_rx.buf, ret);
+			menu_set_need_update();
+	}
+
 	char c;
 	c = Keypad_getKey(&keypad);
 	if (c) {
-		text_buf.buf[text_buf.i] = c;
-		text_buf.i++;
+		if (c == KEY_ENTER) {
+			BEEPER_Enable(700, 10);
+			SX1278_LoRaEntryTx(&SX1278, strlen(text_buf.buf), 2000);
+			SX1278_LoRaTxPacket(&SX1278, (uint8_t *)text_buf.buf, strlen(text_buf.buf), 2000);
+			SX1278_LoRaEntryRx(&SX1278, 10, 2000);
+			for (int i = 0; i < BUFFER_LENGTH; i++) text_buf.buf[i] = 0;
+			text_buf.i = 0;
+		}
+		else if (c == KEY_DOWN) {
+			if (text_buf.i) {
+				text_buf.buf[text_buf.i - 1] = 0;
+				text_buf.i--;
+			}
+		}
+		else if (c == KEY_SHIFT) {
+			if (!keypad_shifted) {
+				Keypad_delete(&keypad);
+				Keypad_create(&keypad, makeKeymap(shiftKeys), rowPins, colPins, ROWS, COLS);
+				keypad_shifted = 1;
+			}
+			else {
+				Keypad_delete(&keypad);
+				Keypad_create(&keypad, makeKeymap(symbolKeys), rowPins, colPins, ROWS, COLS);
+				keypad_shifted = 0;
+			}
+		}
+		else {
+			text_buf.buf[text_buf.i] = c;
+			text_buf.i++;
+		}
 		menu_set_need_update();
 		event = EVENT_NONE;
 	}
 
 	if (menu_get_need_update()) {
 		MENU_FUNC_PTR_t func = get_current_menu_func_ptr();
-		(*func)(text_buf.buf, 0);
+		(*func)(text_buf.buf, text_buf_rx.buf, keypad_shifted);
 	}
 
 
