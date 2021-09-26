@@ -36,11 +36,15 @@ extern "C" {
 #include "stdlib.h"
 #include "math.h"
 
+#include "loop.h"
+
 #include "SX1278.h"
 #include "st7735newLib.h"
 #include "Display_GFX.h"
 #include "beeper.h"
 #include "keypad.h"
+#include "USB_Serial.h"
+
 
 #include "Common.h"
 

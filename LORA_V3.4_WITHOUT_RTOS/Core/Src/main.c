@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "config.h"
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,7 +50,6 @@ DMA_HandleTypeDef hdma_spi1_tx;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
-Keypad_t keypad;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,123 +105,14 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(PWR_GPIO_Port, PWR_Pin, GPIO_PIN_SET);
-
-  ST7735_Init();
-  ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
-
-  //ST7735_FillRectangle(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1, ST7735_BLACK);
-
-  BEEPER_SetVolume(2);
-  main_menu(0);
-  Keypad_create(&keypad, makeKeymap(symbolKeys), rowPins, colPins, ROWS, COLS);
-
-  SX1278_hw_t SX1278_hw;
-  SX1278_t SX1278;
-
-
-  SX1278_hw.dio0.port = LORA_DIO0_GPIO_Port;
-  SX1278_hw.dio0.pin = LORA_DIO0_Pin;
-  SX1278_hw.nss.port = LORA_NSS_GPIO_Port;
-  SX1278_hw.nss.pin = LORA_NSS_Pin;
-  SX1278_hw.reset.port = LORA_RST_GPIO_Port;
-  SX1278_hw.reset.pin = LORA_RST_Pin;
-  SX1278_hw.spi = &hspi2;
-  SX1278.hw = &SX1278_hw;
-
-  SX1278.hw = &SX1278_hw;
-
-  //SX1278_init(&SX1278, 434000000, SX1278_POWER_17DBM, SX1278_LORA_SF_7, SX1278_LORA_BW_125KHZ, SX1278_LORA_CR_4_5, SX1278_LORA_CRC_EN, 10);
-  SX1278_begin(&SX1278, SX1278_433MHZ, SX1278_POWER_14DBM, SX1278_LORA_SF_8, SX1278_LORA_BW_20_8KHZ, 20);
-  SX1278_LoRaEntryRx(&SX1278, 50, 2000);
-  //BEEPER_PlayTones(tones_SMB);
-
+  setup();
+  loop();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  text_area_t text_area1;
-  text_area_t text_area2;
-  text_area_t text_area3;
-  ST7735_setTextArea(&text_area1, 1, ST7735_HEIGHT / 2 + 3, 120, 50, &Font_7x10);
-  ST7735_setTextArea(&text_area2, 4,  4, 100, 50, &Font_7x10);
-  ST7735_setTextArea(&text_area3, 80, 20, 60, 40, &Font_7x10);
-
-
-
   while (1)
   {
-	static char c;
-	static char buf[60];
-	static char buf_r[60];
-	static char i = 0;
-	static _Bool shifted = 0;
-
-
-
-	uint16_t ret = SX1278_LoRaRxPacket(&SX1278);
-
-	if (ret > 0) {
-		BEEPER_Enable(1000, 20);
-		main_menu(0);
-		SX1278_read(&SX1278, (uint8_t*) buf_r, ret);
-		ST7735_writeToTextArea(&text_area2, buf_r, ST7735_RED, ST7735_BLACK);
-	}
-
-	if (shifted) {
-		ST7735_writeToTextArea(&text_area3, "shifted", ST7735_RED, ST7735_BLACK);
-	}
-	else {
-		ST7735_writeToTextArea(&text_area3, " ", ST7735_RED, ST7735_BLACK);
-	}
-
-	//c = Keypad_getKey(&keypad);
-	//main_menu(0);
-	c = Keypad_getKey(&keypad);
-	if (c) {
-			if (c == KEY_ENTER) {
-				if (!strcmp(buf, "MARIO"))
-					BEEPER_PlayTones(tones_SMB);
-				else
-					BEEPER_Enable(700, 10);
-				SX1278_LoRaEntryTx(&SX1278, strlen(buf), 2000);
-				SX1278_LoRaTxPacket(&SX1278, (uint8_t *)buf, strlen(buf), 2000);
-				SX1278_LoRaEntryRx(&SX1278, 10, 2000);
-				for (int i = 0; i < 60; i++) buf[i] = 0;
-				i = 0;
-				main_menu(0);
-			}
-			else if (c == KEY_DOWN) {
-				if (i) {
-					buf[i - 1] = 0;
-					i--;
-					main_menu(0);
-				}
-			}
-			else if (c == KEY_SHIFT) {
-				if (!shifted) {
-					Keypad_delete(&keypad);
-					Keypad_create(&keypad, makeKeymap(shiftKeys), rowPins, colPins, ROWS, COLS);
-					shifted = 1;
-					main_menu(0);
-				}
-				else {
-					Keypad_delete(&keypad);
-					Keypad_create(&keypad, makeKeymap(symbolKeys), rowPins, colPins, ROWS, COLS);
-					shifted = 0;
-					main_menu(0);
-				}
-			}
-			else {
-				BEEPER_Enable(600, 2);
-				buf[i] = c;
-				i++;
-				//ST7735_WriteString(4, ST7735_HEIGHT / 2 + 3, buf, Font_7x10, ST7735_RED, ST7735_BLACK);
-
-			}
-
-	}
-	ST7735_writeToTextArea(&text_area1, buf, ST7735_RED, ST7735_BLACK);
-	HAL_Delay(100);
 
     /* USER CODE END WHILE */
 

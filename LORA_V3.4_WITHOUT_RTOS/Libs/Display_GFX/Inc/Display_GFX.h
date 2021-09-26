@@ -45,8 +45,6 @@ typedef struct {
 	uint16_t w;
 	uint16_t h;
 	FontDef *font;
-	uint16_t font_width;
-	uint16_t font_height;
 } text_area_t;
 
 _Bool ST7735_setTextArea(text_area_t *area, uint16_t x, uint16_t y, uint16_t w, uint16_t h, FontDef *font);

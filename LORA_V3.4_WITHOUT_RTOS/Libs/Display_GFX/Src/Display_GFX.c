@@ -336,8 +336,8 @@ _Bool ST7735_setTextArea(text_area_t *area, uint16_t x, uint16_t y, uint16_t w, 
 	area->w = w;
 	area->h = h;
 	area->font = font;
-	area->font_height = font->height;
-	area->font_width = font->width;
+	area->font->height = font->height;
+	area->font->width = font->width;
 	return 1;
 }
 
@@ -345,10 +345,10 @@ _Bool ST7735_writeToTextArea(text_area_t *area, char *text, uint16_t color, uint
 	uint16_t x = area->x;
 	uint16_t y = area->y;
 	while(*text) {
-		if(x + area->font_width >= area->x + area->w) {
+		if(x + area->font->width >= area->x + area->w) {
 			x = area->x;
-			y += area->font_height;
-			if(y + area->font_height >= area->y + area->h) {
+			y += area->font->height;
+			if(y + area->font->height >= area->y + area->h) {
 				return 0;
 			}
 
@@ -360,7 +360,7 @@ _Bool ST7735_writeToTextArea(text_area_t *area, char *text, uint16_t color, uint
 		}
 
 		ST7735_WriteChar(x, y, *text, *(area->font), color, bgcolor);
-		x += area->font_width;
+		x += area->font->width;
 		text++;
 	}
 	return 1;
