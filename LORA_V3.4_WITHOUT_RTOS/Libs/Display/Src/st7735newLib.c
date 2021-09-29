@@ -265,7 +265,7 @@ void ST7735_DrawImage(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint16_t
 	
 	for (size_t i = 0; i < h; i++) {
 		for (size_t j = 0; j < w; j++){
-			framebuffer[(i + y) * (window_x1 - window_x0 + 1) + x + j] = data[i * h + j];
+			framebuffer[(i + y) * (window_x1 - window_x0 + 1) + x + j] = data[i * w + j];
 		}
 	}
 }
