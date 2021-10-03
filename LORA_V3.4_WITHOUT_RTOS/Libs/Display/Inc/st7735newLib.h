@@ -9,6 +9,11 @@
 #include <stdbool.h>
 #include "main.h"
 
+
+//#define DISP2 //define нужный
+#define DISP1
+
+
 /****************************/
 
 #define ST7735_RES_Pin       GPIO_PIN_4
@@ -37,8 +42,14 @@
 
 #define ST7735_WIDTH  160
 #define ST7735_HEIGHT 128
-#define ST7735_XSTART 1
-#define ST7735_YSTART 2
+#ifdef DISP1
+	#define ST7735_XSTART 0
+	#define ST7735_YSTART 0
+#endif
+#ifdef DISP2
+	#define ST7735_XSTART 1
+	#define ST7735_YSTART 2
+#endif
 #define ST7735_ROTATION (ST7735_MADCTL_MY | ST7735_MADCTL_MV | ST7735_MADCTL_RGB)
 
 /****************************/

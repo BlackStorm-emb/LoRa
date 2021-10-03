@@ -25,7 +25,7 @@ static text_buf_t text_buf;
 static text_FIFO_buf_t text_buf_rx;
 static char TX_BUF[BUFFER_LENGTH];
 
-static uint8_t MyID = 1;
+static uint8_t MyID = 3;
 
 static unread_mes = 0;
 
