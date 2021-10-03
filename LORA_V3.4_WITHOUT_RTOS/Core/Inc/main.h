@@ -34,6 +34,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "stdlib.h"
+#include "stdio.h"
 #include "math.h"
 
 #include "loop.h"
@@ -44,6 +45,7 @@ extern "C" {
 #include "beeper.h"
 #include "keypad.h"
 #include "USB_Serial.h"
+#include "Battery.h"
 
 
 #include "Common.h"
@@ -92,6 +94,7 @@ void Error_Handler(void);
 #define A_GPIO_Port GPIOC
 #define PWR_B_Pin GPIO_PIN_1
 #define PWR_B_GPIO_Port GPIOA
+#define PWR_B_EXTI_IRQn EXTI1_IRQn
 #define PWR_Pin GPIO_PIN_2
 #define PWR_GPIO_Port GPIOA
 #define TFT_SCL_Pin GPIO_PIN_5
