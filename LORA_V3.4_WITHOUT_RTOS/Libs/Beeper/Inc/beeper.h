@@ -100,12 +100,12 @@ static const Tone_TypeDef tones_SMB[] = {
 #define BUZZER_VOLUME_MUTE	0
 
 // Function prototypes
-void BEEPER_Enable(uint16_t frequency, uint32_t duration);
-void BEEPER_Disable(void);
-void BEEPER_SetVolume(uint16_t volume);
-void BEEPER_PlayTones(const Tone_TypeDef * melody);
+void BEEPER_Enable(uint16_t frequency, uint32_t duration); //включение пищалки на определенную частоту на время duration
+void BEEPER_Disable(void); //Отключение генерации
+void BEEPER_SetVolume(uint16_t volume); //Установка громкости
+void BEEPER_PlayTones(const Tone_TypeDef * melody); //Загрузка мелодии
 
-void BEEPER_IT(void);
+void BEEPER_IT(void); //функция вызываемая в прерывании
 
 #endif // __BEEPER_H
 

@@ -25,9 +25,9 @@ static text_buf_t text_buf;
 static text_FIFO_buf_t text_buf_rx;
 static char TX_BUF[BUFFER_LENGTH];
 
-static uint8_t MyID = 3;
+static uint8_t MyID = 13;
 
-static unread_mes = 0;
+static uint8_t unread_mes = 0;
 
 //State Machine, здесь мы описываем возможные состояния
 typedef enum {
@@ -99,7 +99,7 @@ void setup(void) {
 	SX1278.hw = &SX1278_hw;
 
 
-	SX1278_begin(&SX1278, SX1278_433MHZ, SX1278_POWER_14DBM, SX1278_LORA_SF_8, SX1278_LORA_BW_20_8KHZ, 20);
+	SX1278_begin(&SX1278, SX1278_433MHZ, SX1278_POWER_20DBM, SX1278_LORA_SF_6, SX1278_LORA_BW_10_4KHZ, 20);
 	SX1278_LoRaEntryRx(&SX1278, BUFFER_LENGTH, 2000);
 	ST7735_DrawImage(0, 0, 160, 128, test_img_160x128_radio);
 	HAL_Delay(500);
