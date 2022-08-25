@@ -47,7 +47,6 @@ extern "C" {
 #include "USB_Serial.h"
 #include "Battery.h"
 
-
 #include "Common.h"
 
 //#include "config.h"

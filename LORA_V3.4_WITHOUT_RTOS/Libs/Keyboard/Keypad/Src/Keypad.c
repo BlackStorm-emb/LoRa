@@ -38,7 +38,7 @@ _Bool Keypad_create(Keypad_t *keypad, char *userKeymap, const Keypad_dio_t *row,
 
 	Keypad_setDebounceTime(10);
 	Keypad_setHoldTime(300);
-	keypadEventListener = 0;
+	//keypadEventListener = 0;
 
 	startTime = 0;
 	single_key = 0;
@@ -154,7 +154,7 @@ void scanKeys(Keypad_t *keypad) {
 }
 
 _Bool updateList(Keypad_t *keypad) {
-	bool anyActivity = false;
+	_Bool anyActivity = false;
 
 		// Delete any IDLE keys
 		for (uint8_t i=0; i < LIST_MAX; i++) {

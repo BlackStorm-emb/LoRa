@@ -105,10 +105,13 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
   MX_TIM9_Init();
-  HAL_TIM_PWM_Start_IT(&htim9, TIM_CHANNEL_2);
   /* USER CODE BEGIN 2 */
   HAL_Delay(500);
   HAL_GPIO_WritePin(PWR_GPIO_Port, PWR_Pin, GPIO_PIN_SET);
+
+  ST7735_Init();
+  ST7735_Start(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
+
   setup();
   loop();
   /* USER CODE END 2 */
@@ -117,7 +120,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -316,9 +318,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 9;
+  htim2.Init.Prescaler = 32;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 999;
+  htim2.Init.Period = 200;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -341,7 +343,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 449;
+  sConfigOC.Pulse = 100;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -374,7 +376,7 @@ static void MX_TIM9_Init(void)
 
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 189;
+  htim9.Init.Prescaler = 31;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim9.Init.Period = 999;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -390,7 +392,7 @@ static void MX_TIM9_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 120;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim9, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
@@ -516,23 +518,26 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM2) {
 		BEEPER_IT();
 	}
-}
-/*
-else if (htim->Instance == TIM9) {
-		static _Bool direction = 0;
-		uint16_t dutyCycle = HAL_TIM_ReadCapturedValue(&htim9, TIM_CHANNEL_2);
-		if (dutyCycle ==  __HAL_TIM_GET_AUTORELOAD(&htim9))
-					direction = 1;
-		else if (dutyCycle ==  0)
-			direction = 0;
-		if (direction)
-			dutyCycle--;
-		else
-			dutyCycle++;
-		__HAL_TIM_SET_COMPARE(&htim9, TIM_CHANNEL_2, dutyCycle);
+	else if (htim->Instance == TIM9) {
+			static _Bool direction = 0;
+			uint16_t dutyCycle = HAL_TIM_ReadCapturedValue(&htim9, TIM_CHANNEL_2);
+			if (dutyCycle ==  __HAL_TIM_GET_AUTORELOAD(&htim9))
+						direction = 1;
+			else if (dutyCycle ==  0)
+				direction = 0;
+			if (direction)
+				dutyCycle-= 100;
+			else
+				dutyCycle+= 100;
+			__HAL_TIM_SET_COMPARE(&htim9, TIM_CHANNEL_2, dutyCycle);
 
-	}
-*/
+		}
+}
+
+
+
+
+
 /* USER CODE END 4 */
 
 /**

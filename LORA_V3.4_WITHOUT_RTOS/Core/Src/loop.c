@@ -29,6 +29,10 @@ static uint8_t MyID = 13;
 
 static uint8_t unread_mes = 0;
 
+static uint8_t current_power = SX1278_POWER_14DBM;
+static uint8_t current_SF = SX1278_LORA_SF_8;
+static uint8_t current_BW = SX1278_LORA_BW_20_8KHZ;
+
 //State Machine, здесь мы описываем возможные состояния
 typedef enum {
 	STATE_INIT,
@@ -83,8 +87,10 @@ void setup(void) {
 
 
 	BEEPER_SetVolume(2);
+
+
 	Keypad_create(&keypad, makeKeymap(symbolKeys), rowPins, colPins, ROWS, COLS);
-	//Keypad_addEventListener(keypadEvent);
+
 
 
 	SX1278_hw.dio0.port = LORA_DIO0_GPIO_Port;
@@ -99,7 +105,7 @@ void setup(void) {
 	SX1278.hw = &SX1278_hw;
 
 
-	SX1278_begin(&SX1278, SX1278_433MHZ, SX1278_POWER_20DBM, SX1278_LORA_SF_6, SX1278_LORA_BW_10_4KHZ, 20);
+	SX1278_begin(&SX1278, SX1278_433MHZ, current_power, current_SF, current_BW, 20);
 	SX1278_LoRaEntryRx(&SX1278, BUFFER_LENGTH, 2000);
 	ST7735_DrawImage(0, 0, 160, 128, test_img_160x128_radio);
 	HAL_Delay(500);
@@ -135,17 +141,20 @@ void idle(void) {
 	}
 
 	if (ret > 0) {
+			char SNR[10];
+			float SNRf = SX1278_LastPacketSNR_LoRa(&SX1278);
+			sprintf(SNR, "%2.0f", SNRf);
 			BEEPER_Enable(1000, 20);
 			if (text_buf_rx.i == FIFO_LENGTH - 1 ) {
 				for (uint8_t i = 0; i < FIFO_LENGTH - 1; i++) {
 					memcpy(text_buf_rx.texts[i], text_buf_rx.texts[i + 1], strlen(text_buf_rx.texts[i + 1]));
 				}
-				SX1278_read(&SX1278, (uint8_t*) text_buf_rx.texts[text_buf_rx.i], ret);
 			}
-			else {
-				SX1278_read(&SX1278, (uint8_t*) text_buf_rx.texts[text_buf_rx.i], ret);
+			SX1278_read(&SX1278, (uint8_t*) text_buf_rx.texts[text_buf_rx.i], ret);
+			if (text_buf_rx.i != FIFO_LENGTH - 1 )
 				text_buf_rx.i++;
-			}
+			strcat(text_buf_rx.texts[text_buf_rx.i], SNR);
+
 			menu_set_need_update();
 			event = EVENT_RX;
 			unread_mes++;
@@ -215,6 +224,37 @@ void idle(void) {
 				text_buf.i++;
 			}
 		}
+		else if (get_current_menu() == MENU_STATE_SETUP) {
+			if (new_key == 'X') {
+				set_current_menu(MENU_STATE_MAIN_MENU);
+				menu_set_need_update();
+				SX1278_begin(&SX1278, SX1278_433MHZ, current_power, current_SF, current_BW, 20);
+				SX1278_LoRaEntryRx(&SX1278, BUFFER_LENGTH, 2000);
+			}
+			else if (new_key == KEY_SHIFT){
+				menu_set_need_update();
+				MyID++;
+			}
+			else if (new_key == KEY_DOWN){
+				menu_set_need_update();
+				MyID--;
+			}
+			else if (new_key == 'A') {
+				menu_set_need_update();
+				if (current_power == SX1278_POWER_11DBM) current_power = 0;
+				else current_power++;
+			}
+			else if (new_key == 'B') {
+				menu_set_need_update();
+				if (current_SF == SX1278_LORA_SF_12) current_SF = 0;
+				else current_SF++;
+			}
+			else if (new_key == 'C') {
+				menu_set_need_update();
+				if (current_BW == SX1278_LORA_BW_500KHZ) current_BW = 0;
+				else current_BW++;
+			}
+		}
 
 		event = EVENT_KEY;
 	}
@@ -235,6 +275,9 @@ void show_current_menu(void) {
 		}
 		else if (get_current_menu() == MENU_STATE_WRITE_MESSAGE) {
 			(*func)(&text_buf.buf, keypad_shifted);
+		}
+		else if (get_current_menu() == MENU_STATE_SETUP) {
+			(*func)(MyID, current_power, current_SF, current_BW);
 		}
 	}
 }

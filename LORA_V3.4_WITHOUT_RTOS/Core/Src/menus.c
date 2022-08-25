@@ -114,7 +114,28 @@ void *main_menu(uint16_t number_new, uint8_t ID, uint8_t bat_level) {
 	return 0;
 }
 
-void *setup_menu(uint8_t freq, uint8_t spr, uint8_t power, uint8_t ID) {
+void *setup_menu(uint8_t ID, uint8_t power, uint8_t SF, uint8_t BW) {
+	ST7735_FillScreen(ST7735_BLACK);
+	char buf[80];
+
+	sprintf(buf, "ID: %d", ID);
+	text_area_t text;
+	ST7735_setTextArea(&text, 0, 0, 159, 20, &Font_7x10);
+	ST7735_writeToTextArea(&text, buf, ST7735_WHITE, ST7735_BLACK);
+
+	sprintf(buf, "Power[A]: %d", power);
+	ST7735_setTextArea(&text, 0, 21, 159, 20, &Font_7x10);
+	ST7735_writeToTextArea(&text, buf, ST7735_WHITE, ST7735_BLACK);
+
+	sprintf(buf, "SF[B]: %d", SF);
+	ST7735_setTextArea(&text, 0, 42, 159, 20, &Font_7x10);
+	ST7735_writeToTextArea(&text, buf, ST7735_WHITE, ST7735_BLACK);
+
+	sprintf(buf, "BW[C]: %d", BW);
+	ST7735_setTextArea(&text, 0, 63, 159, 20, &Font_7x10);
+	ST7735_writeToTextArea(&text, buf, ST7735_WHITE, ST7735_BLACK);
+
+
 	menu.updated = 1;
 }
 void *read_message_menu(text_FIFO_buf_t* text_buf_rx) {
